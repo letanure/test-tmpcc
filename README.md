@@ -13,8 +13,8 @@ An object with task ids as keys and objects describing the tasks as values:
 ```typescript
 interface TaskDict {
   [taskId: string]: {
-    dependencies: string[]; // an array of task ids.
-    task: (...dependencyResults: any[]) => any;
+    dependencies: string[] // an array of task ids.
+    task: (...dependencyResults: any[]) => any
   }
 }
 ```
@@ -25,20 +25,19 @@ A promise that resolves with an object with task ids as keys and task results as
 
 ```typescript
 interface TaskResultDict {
-  [taskId: string]: (
-    {
-      status: 'resolved',
-      value: any
-    } |
-    {
-      status: 'failed',
-      reason: any
-    } |
-    {
-      status: 'skipped',
-      unresolvedDependencies: string[]
-    }
-  );
+  [taskId: string]:
+    | {
+        status: 'resolved'
+        value: any
+      }
+    | {
+        status: 'failed'
+        reason: any
+      }
+    | {
+        status: 'skipped'
+        unresolvedDependencies: string[]
+      }
 }
 ```
 
@@ -50,11 +49,11 @@ The same `skipped` status should be if a dependency is circular. Yes, there can 
 ### Example
 
 ```typescript
-const {deepStrictEqual} = require('assert');
+const { deepStrictEqual } = require('assert')
 
 const runTasks = (tasks: TaskDict): Promise<TaskResultDict> => {
   // TODO
-};
+}
 
 const taskResults = await runTasks({
   a: {
@@ -81,16 +80,16 @@ const taskResults = await runTasks({
     dependencies: ['f'],
     task: () => console.log('Should never run - "f" depends on itself.')
   }
-});
+})
 
 deepStrictEqual(taskResults, {
-  a: {status: 'resolved', value: 4},
-  b: {status: 'resolved', value: 3},
-  c: {status: 'resolved', value: 5},
-  d: {status: 'failed', reason: 'This will fail.'},
-  e: {status: 'skipped', unresolvedDependencies: ['d', 'f']},
-  f: {status: 'skipped', unresolvedDependencies: ['f']}
-});
+  a: { status: 'resolved', value: 4 },
+  b: { status: 'resolved', value: 3 },
+  c: { status: 'resolved', value: 5 },
+  d: { status: 'failed', reason: 'This will fail.' },
+  e: { status: 'skipped', unresolvedDependencies: ['d', 'f'] },
+  f: { status: 'skipped', unresolvedDependencies: ['f'] }
+})
 ```
 
 ### Installation
@@ -110,5 +109,5 @@ If you prefer JavaScript over TypeScript, just rename `intex.ts` to `index.js` a
 ```javascript
 export const runTasks = (tasks) => {
   // TODO
-};
+}
 ```
