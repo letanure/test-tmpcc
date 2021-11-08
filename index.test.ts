@@ -38,7 +38,7 @@ describe('runTasks()', () => {
     expect(callCounts).toEqual({ a: 1, b: 1, c: 1, d: 1 })
   })
 
-  it.skip('should wait for dependencies', async () => {
+  it('should wait for dependencies', async () => {
     const callCounts = {}
     const taskResults = await runTasks(
       spyOnTaskCalls(callCounts, {
