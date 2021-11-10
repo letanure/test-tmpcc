@@ -23,63 +23,97 @@ interface TaskResultDict {
 }
 
 const runTask = async (
-  taskId: string,
-  taskConfig: TaskConfig,
-  tasks: TaskDict
-): Promise<TaskResultDict> => {
+  idTask: string,
+  task: TaskConfig,
+  queueResults: TaskResultDict
+) => {
   try {
-    if (taskConfig?.dependencies.length > 0) {
-      const taskResults = await runTasksByIds(taskConfig.dependencies, tasks)
-      const failedTasks = taskResults
-        .map((taskResult) => {
-          return Object.keys(taskResult)
-            .map((key) => {
-              return taskResult[key].status === 'failed' ? key : null
-            })
-            .filter((key) => key !== null)
-        })
-        .flat()
-      if (failedTasks.length > 0) {
+    let resultsDepsValues: TaskResultDict[] = []
+    if (task.dependencies.length > 0) {
+      const resultsDeps = task.dependencies.map((id) => ({
+        id,
+        ...queueResults[id]
+      }))
+      if (!queueResults[task.dependencies[0]]) {
         return {
-          [taskId]: {
-            status: 'skipped',
-            unresolvedDependencies: failedTasks
-          }
+          status: 'skipped',
+          unresolvedDependencies: task.dependencies
         }
       }
-    }
-    const value = await taskConfig.task()
-    return {
-      [taskId]: {
-        status: 'resolved',
-        value
+      const unresolvedDependencies = resultsDeps
+        .filter(
+          (result) =>
+            result.status === 'failed' ||
+            result.status === 'skipped' ||
+            result.id === idTask
+        )
+        .map(({ id }) => id)
+      if (unresolvedDependencies.length > 0) {
+        return {
+          status: 'skipped',
+          unresolvedDependencies
+        }
+      } else {
+        resultsDepsValues = resultsDeps.map(({ value }) => value)
       }
+    }
+    const value3 = await task.task(...resultsDepsValues)
+    return {
+      status: 'resolved',
+      value: value3
     }
   } catch (error) {
     return {
-      [taskId]: {
-        status: 'failed',
-        reason: error
-      }
+      status: 'failed',
+      reason: error
     }
   }
 }
 
-const runTasksByIds = async (tasKeys: string[], tasks: TaskDict) => {
-  return await Promise.all(
-    tasKeys.map(async (taskId) => {
-      return runTask(taskId, tasks[taskId], tasks)
-    })
-  )
+function orderTasks(tasks: TaskDict) {
+  let result: string[] = []
+  Object.entries(tasks).forEach((taskConfig) => {
+    const [id, task] = taskConfig
+    let dependencies = task.dependencies
+    result.unshift(id)
+    while (dependencies.length > 0) {
+      result.unshift(...dependencies)
+      if (dependencies.includes(id)) {
+        dependencies = []
+      } else {
+        dependencies = tasks[dependencies[0]].dependencies
+      }
+    }
+  })
+  return [...new Set(result.flat())]
 }
 
 export const runTasks = async (tasks: TaskDict): Promise<TaskResultDict> => {
-  const taskResults = await runTasksByIds(Object.keys(tasks), tasks)
+  let results: TaskResultDict = {}
 
-  return taskResults.reduce((resultFinal, ResultItem) => {
+  const taskResults = await Promise.all(
+    Object.entries(tasks)
+      .filter((item) => item[1].dependencies.length === 0)
+      .map((item) => item[0])
+      .map(async (taskId) => ({
+        id: taskId,
+        task: await runTask(taskId, tasks[taskId], results)
+      }))
+  )
+
+  results = taskResults.reduce((resultFinal, item) => {
     return {
       ...resultFinal,
-      ...ResultItem
+      [item.id]: item.task
     }
   }, {})
+
+  const tasksQueue = [...orderTasks(tasks)]
+
+  for (const [i, id] of tasksQueue.entries()) {
+    const task = tasks[id]
+    if (!results[id]) results[id] = await runTask(id, task, results)
+  }
+
+  return results
 }
