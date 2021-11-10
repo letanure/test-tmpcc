@@ -77,7 +77,7 @@ describe('runTasks()', () => {
     expect(callCounts).toEqual({ b: 1, c: 1, d: 1 })
   })
 
-  it.skip('should work for the example from readme', async () => {
+  it('should work for the example from readme', async () => {
     const callCounts = {}
     const taskResults = await runTasks(
       spyOnTaskCalls(callCounts, {
@@ -119,7 +119,7 @@ describe('runTasks()', () => {
     expect(callCounts).toEqual({ a: 1, b: 1, c: 1, d: 1 })
   })
 
-  it.skip('should skip circular dependencies', async () => {
+  it('should skip circular dependencies', async () => {
     const callCounts = {}
     const taskResults = await runTasks(
       spyOnTaskCalls(callCounts, {
@@ -151,7 +151,7 @@ describe('runTasks()', () => {
     expect(callCounts).toEqual({})
   })
 
-  it.skip('should run tasks that do not depend on each other simultaneously', async () => {
+  it('should run tasks that do not depend on each other simultaneously', async () => {
     const callCounts = {}
     const count = 1000
     const randomIndex = Math.floor(Math.random() * count)
@@ -203,7 +203,7 @@ describe('runTasks()', () => {
     )
   })
 
-  it.skip('should run tasks that do not depend on each other simultaneously - 2', async () => {
+  it('should run tasks that do not depend on each other simultaneously - 2', async () => {
     const callCounts = {}
     const count = 1000
     const indices = Array.from(new Array(count)).map((_, index) => index)
