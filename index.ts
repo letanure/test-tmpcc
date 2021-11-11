@@ -30,37 +30,33 @@ const runTask = async (
   try {
     let resultsDepsValues: TaskResultDict[] = []
     if (task.dependencies.length > 0) {
-      const resultsDeps = task.dependencies.map((id) => ({
-        id,
-        ...queueResults[id]
-      }))
       if (!queueResults[task.dependencies[0]]) {
         return {
           status: 'skipped',
           unresolvedDependencies: task.dependencies
         }
       }
+      const resultsDeps = task.dependencies.map((id) => ({
+        id,
+        ...queueResults[id]
+      }))
       const unresolvedDependencies = resultsDeps
         .filter(
-          (result) =>
-            result.status === 'failed' ||
-            result.status === 'skipped' ||
-            result.id === idTask
+          (result) => result.status === 'failed' || result.status === 'skipped'
         )
         .map(({ id }) => id)
-      if (unresolvedDependencies.length > 0) {
+      if (unresolvedDependencies.length <= 0) {
+        resultsDepsValues = resultsDeps.map(({ value }) => value)
+      } else {
         return {
           status: 'skipped',
           unresolvedDependencies
         }
-      } else {
-        resultsDepsValues = resultsDeps.map(({ value }) => value)
       }
     }
-    const value3 = await task.task(...resultsDepsValues)
     return {
       status: 'resolved',
-      value: value3
+      value: await task.task(...resultsDepsValues)
     }
   } catch (error) {
     return {
@@ -91,28 +87,36 @@ function orderTasks(tasks: TaskDict) {
 export const runTasks = async (tasks: TaskDict): Promise<TaskResultDict> => {
   let results: TaskResultDict = {}
 
-  const taskResults = await Promise.all(
+  const tasksWithoutDepsResults = await Promise.all(
     Object.entries(tasks)
+      // filter tasks without dependencies
       .filter((item) => item[1].dependencies.length === 0)
+      // return only the ID
       .map((item) => item[0])
-      .map(async (taskId) => ({
-        id: taskId,
-        task: await runTask(taskId, tasks[taskId], results)
+      // resolve the task
+      .map(async (id) => ({
+        id,
+        task: await runTask(id, tasks[id], results)
       }))
   )
 
-  results = taskResults.reduce((resultFinal, item) => {
+  // change the format from array of resolved promises to the return format
+  results = tasksWithoutDepsResults.reduce((resultFinal, item) => {
     return {
       ...resultFinal,
       [item.id]: item.task
     }
   }, {})
 
+  // order all tasks
   const tasksQueue = [...orderTasks(tasks)]
 
+  // resolve all tasks, checking if is alread resolved
   for (const [i, id] of tasksQueue.entries()) {
     const task = tasks[id]
-    if (!results[id]) results[id] = await runTask(id, task, results)
+    if (!results[id]) {
+      results[id] = await runTask(id, task, results)
+    }
   }
 
   return results
